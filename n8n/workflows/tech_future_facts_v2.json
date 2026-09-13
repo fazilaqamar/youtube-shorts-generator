@@ -1,0 +1,652 @@
+{
+  "name": "Tech & Future Facts v2 (FastAPI + MoviePy)",
+  "nodes": [
+    {
+      "id": "505759f2-441f-444d-b3cb-29af7b12a679",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -176,
+        -112
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b4cb3d9d-3918-40cd-8366-8edac1869eca",
+      "name": "Search",
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        48,
+        -112
+      ],
+      "parameters": {
+        "query": "latest technology breakthroughs",
+        "options": {
+          "search_depth": "advanced",
+          "max_results": 5,
+          "include_answer": "basic"
+        }
+      },
+      "credentials": {
+        "tavilyApi": {
+          "id": "KlttPYrRlTw5SPmm",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "id": "6d44a49b-b405-4f06-b6b2-0f4698844137",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        336,
+        -112
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=Using the following research, create a 60-second YouTube Shorts script.\n\nResearch:\n{{ $json.answer }}\n\nRequirements:\n\n- Create an engaging title.\n- Write a narration suitable for approximately 60 seconds.\n- Split the video into exactly 6 scenes.\n\nFor every scene return:\n\n- scene\n- text\n- visual_query\n\nIMPORTANT:\n\nThe visual_query is used directly to search Pexels Videos.\n\nWrite search queries that are extremely specific and describe exactly what should appear in the video.\n\nUse between 4 and 8 words.\n\nFocus on visible objects and actions.\n\nNever use abstract concepts.\n\nAvoid words like:\ncinematic\nepic\n4K\nHD\nbeautiful\nbest\nfuture\ntechnology\ninnovation\n\nInstead describe what can actually be filmed.\n\nGood examples:\n\nscientist using quantum computer\nrobot working in laboratory\ndoctor using AI medical system\nsolar panels aerial view\nelectric car charging\ndrone flying over smart city\nserver racks data center\nperson wearing VR headset\nsatellite orbiting Earth\nrobotic arm assembling car\n\nBad examples:\n\nfuture technology\nAI future\nmodern innovation\ndigital transformation\nadvanced technology\nscience concept\n If the topic has no real stock footage, replace it with the closest real-world footage that represents the idea.\nReturn ONLY valid JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an expert at generating search queries for the Pexels Videos API.\n\nYour ONLY goal is to maximize the chance of finding real stock footage.\n\nRules:\n\n- Think like a stock footage creator.\n- Describe things that people can actually film.\n- Never invent futuristic objects.\n- Never describe imaginary technology.\n- Never describe concepts.\n\nAlways search for:\n\npeople\nscientists\nlaboratories\ncomputers\nrobots\nservers\ncities\nhospitals\ncars\nsatellites\nfactories\ndrones\nrenewable energy\nwind turbines\nsolar panels\n\nIf a technology doesn't exist visually, search for something related to it.\n\nExamples:\n\nInstead of:\nquantum computer\n\nUse:\nscientist working in laboratory\n\nInstead of:\nfusion reactor\n\nUse:\nscientists in research laboratory\n\nInstead of:\nAI intelligence\n\nUse:\nperson typing on computer\n\nInstead of:\nfuture technology\n\nUse:\nserver room data center\n\nEach query should contain 3-6 words.\n\nReturn JSON only."
+        }
+      }
+    },
+    {
+      "id": "984f219b-f1bf-43a6-b6aa-87174e013012",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        112
+      ],
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Sj9yP2icb9KmesVE",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "id": "634981e6-9049-46f9-b5c0-9f54ea3eafe2",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        400,
+        112
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ \"youtube-shorts\" }}",
+        "contextWindowLength": 10
+      }
+    },
+    {
+      "id": "2d2ae8d7-39ca-4cda-b35a-107c89bf1265",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        112
+      ],
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\": \"object\", \"properties\": {\"title\": {\"type\": \"string\"}, \"narration\": {\"type\": \"string\"}, \"scenes\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"properties\": {\"scene\": {\"type\": \"integer\"}, \"text\": {\"type\": \"string\"}, \"visual_query\": {\"type\": \"string\"}}, \"required\": [\"scene\", \"text\", \"visual_query\"]}}}, \"required\": [\"title\", \"narration\", \"scenes\"]}"
+      }
+    },
+    {
+      "id": "3f6b3ee9-fca7-4668-824b-aa28b844a00b",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        736,
+        -112
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8bc43d8c-faff-4a7d-aa74-0e1accbaf918",
+              "name": "title",
+              "value": "={{ $json.output.title }}",
+              "type": "string"
+            },
+            {
+              "id": "a2d3f5bc-17a3-4966-a0b0-74a5619a1af2",
+              "name": "narration",
+              "value": "={{ $json.output.narration }}",
+              "type": "string"
+            },
+            {
+              "id": "103b2d22-ee0e-46ef-9d35-9c8f9e1acd86",
+              "name": "scenes",
+              "value": "={{ $json.output.scenes }}",
+              "type": "array"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "40b1bb43-4da4-47e0-b5da-bb868e01beeb",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -112
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { title: $json.title, narration: $json.narration, scenes: $json.scenes, fullNarration: $json.narration } }];"
+      }
+    },
+    {
+      "id": "af9e973b-8dcf-4198-b293-385708fbd815",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        -112
+      ],
+      "parameters": {
+        "fieldToSplitOut": "scenes",
+        "include": "allOtherFields",
+        "options": {}
+      }
+    },
+    {
+      "id": "3d033fc4-f53b-4d6e-83cd-007462cd722e",
+      "name": "Fetch Pexels Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1408,
+        -112
+      ],
+      "parameters": {
+        "url": "https://api.pexels.com/videos/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.scenes.visual_query }}"
+            },
+            {
+              "name": "per_page",
+              "value": "10"
+            },
+            {
+              "name": "orientation",
+              "value": "portrait"
+            },
+            {
+              "name": "size",
+              "value": "medium"
+            },
+            {
+              "name": "min_duration",
+              "value": "10"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.PEXELS_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f1c59398-bc49-4e55-afa4-58a3d19bcf26",
+      "name": "Extract Video Link",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        -112
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const videos = $json.videos;\nconst query = $('Split Out').item.json.scenes.visual_query;\n\nfunction pickBest(list) {\n  if (!list || !list.length) return null;\n  const v = list[Math.floor(Math.random() * list.length)];\n  const files = (v.video_files || []).filter(f => f.width);\n  if (!files.length) return null;\n  return files.reduce((best, cur) => (cur.width > best.width ? cur : best)).link;\n}\n\nlet video_url = pickBest(videos);\n\nif (!video_url && $env.PIXABAY_API_KEY) {\n  const pixabay = await this.helpers.httpRequest({\n    method: 'GET',\n    url: 'https://pixabay.com/api/videos/',\n    qs: { key: $env.PIXABAY_API_KEY, q: query, video_type: 'film', orientation: 'vertical' },\n    json: true\n  });\n  const hit = (pixabay.hits || [])[0];\n  if (hit) video_url = (hit.videos.medium || hit.videos.small || hit.videos.large || {}).url || null;\n}\n\nreturn { json: { video_url } };"
+      }
+    },
+    {
+      "id": "208dd7c9-3503-4444-bbcc-c8c832777011",
+      "name": "Filter Valid Clips",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        -212
+      ],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.video_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e17d819a-b206-4020-a726-b8ef6f0a6dd7",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        -212
+      ],
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "video_url"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ebde573f-436f-4fcf-a3a7-b9c77995ac0d",
+      "name": "Enough Clips?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2300,
+        -212
+      ],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.video_url.length }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bd5074c9-4909-4a15-8c2b-3132c7b336df",
+      "name": "Abort - No Clips Found",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2520,
+        -80
+      ],
+      "parameters": {
+        "errorMessage": "=No usable stock clips were found for '{{ $('Code in JavaScript').first().json.title }}' — Pexels and Pixabay both returned nothing for every scene."
+      }
+    },
+    {
+      "id": "8c6711e0-3164-471a-9343-e08ca0e8b470",
+      "name": "Generate Video API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2740,
+        -212
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://video-api:8000/generate-video",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ narration: $('Code in JavaScript').first().json.fullNarration, video_urls: $json.video_url }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.VIDEO_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 900000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "565d1996-6c00-4816-97fd-80432cbc24dd",
+      "name": "Platform Captions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2960,
+        -212
+      ],
+      "parameters": {
+        "jsCode": "const title = $('Code in JavaScript').first().json.title;\nconst scenes = $('Code in JavaScript').first().json.scenes;\nconst mainFact = scenes[0].text;\n\nconst instagramCaption = `${title} \\ud83e\\udd2f\\n\\n${mainFact}\\n\\n#TechFacts #DidYouKnow #FutureTech #ScienceFacts #TechNews #AI #Innovation`;\nconst facebookCaption = `${title}\\n\\n${mainFact}\\n\\nFollow for more tech & science facts!`;\nconst linkedinCaption = `${title}\\n\\n${mainFact}\\n\\n#Technology #Innovation #Science`;\n\nreturn [{\n  json: { title, instagramCaption, facebookCaption, linkedinCaption },\n  binary: $input.item.binary\n}];"
+      }
+    },
+    {
+      "id": "4e98325a-eb0e-4928-9a3d-39e4ccc71c2a",
+      "name": "Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        3180,
+        -212
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst emailHTML = `\n<!DOCTYPE html>\n<html><head><style>\nbody { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; background: #f5f5f5; }\n.container { background: white; padding: 30px; border-radius: 10px; }\nh1 { color: #1a1a2e; border-bottom: 3px solid #e94560; padding-bottom: 10px; }\nh2 { color: #16213e; margin-top: 25px; }\n.section { background: #fafafa; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #e94560; white-space: pre-wrap; }\n.footer { margin-top: 25px; text-align: center; color: #666; font-size: 13px; }\n</style></head><body><div class=\"container\">\n<h1>\\ud83c\\udfac New Video Ready: ${data.title}</h1>\n<p>Video is attached below. Download and post manually to your platforms.</p>\n<h2>\\ud83d\\udcf8 Instagram Caption</h2><div class=\"section\">${data.instagramCaption}</div>\n<h2>\\ud83d\\udc4d Facebook Caption</h2><div class=\"section\">${data.facebookCaption}</div>\n<h2>\\ud83d\\udcbc LinkedIn Caption</h2><div class=\"section\">${data.linkedinCaption}</div>\n<div class=\"footer\">Generated by n8n Tech & Future Facts Agent</div>\n</div></body></html>`;\n\nreturn [{\n  json: { subject: `\\ud83c\\udfac New Video: ${data.title}`, html: emailHTML, title: data.title },\n  binary: $input.item.binary\n}];"
+      }
+    },
+    {
+      "id": "712bceed-7999-42ba-8706-50132ee18973",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3400,
+        -212
+      ],
+      "parameters": {
+        "fromEmail": "={{ $env.GMAIL_ADDRESS }}",
+        "toEmail": "={{ $env.GMAIL_ADDRESS }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "data"
+              }
+            ]
+          }
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "id": "ed9b8d64-5b51-467e-ac5e-1fa236db2792",
+      "name": "Log to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3620,
+        -212
+      ],
+      "parameters": {
+        "operation": "append",
+        "sheetName": "={{ $env.GOOGLE_SHEET_TAB || 'Sheet1' }}",
+        "documentId": "={{ $env.GOOGLE_SHEET_ID }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.subject }}",
+            "date": "={{ $now.toISO() }}",
+            "status": "emailed"
+          }
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pexels Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pexels Video": {
+      "main": [
+        [
+          {
+            "node": "Extract Video Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Video Link": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Clips": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Enough Clips?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enough Clips?": {
+      "main": [
+        [
+          {
+            "node": "Generate Video API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Abort - No Clips Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Video API": {
+      "main": [
+        [
+          {
+            "node": "Platform Captions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Platform Captions": {
+      "main": [
+        [
+          {
+            "node": "Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
